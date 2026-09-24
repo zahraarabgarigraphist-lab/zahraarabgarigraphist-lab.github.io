@@ -41,6 +41,7 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:13px;bor
 .bottom-nav{position:fixed;bottom:0;left:0;right:0;height:70px;background:#111;display:flex;justify-content:center;z-index:30;box-shadow:0 -4px 16px #0003}.bottom-nav button{flex:1;max-width:180px;border:0;background:none;color:#aaa;font-size:13px;cursor:pointer}.bottom-nav button.active{color:#d7ad4a}.bottom-nav span{display:block;font-size:11px;margin-top:3px}
 @media(max-width:700px){.quick-grid{grid-template-columns:repeat(2,1fr)}.bottom-nav button{font-size:11px}.cards{grid-template-columns:repeat(2,1fr)}.quick-grid{grid-template-columns:repeat(2,1fr)}.hero{flex-direction:column;align-items:stretch}.hero .gold-btn{width:100%}.form-grid{grid-template-columns:1fr}.cloud-box{flex-direction:column;align-items:stretch}.cloud-box button{width:100%}}
 </style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <header class="topbar">
@@ -78,7 +79,7 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:13px;bor
 <div class="panel"><div class="table-wrap"><table><thead><tr><th>نام مشتری</th><th>شماره تماس</th><th>آدرس</th><th>فاکتورها</th><th></th></tr></thead><tbody id="customersBody"></tbody></table></div></div>
 </section>
 <section id="reports" class="page"><div class="page-head"><h1>گزارش‌ها</h1></div><div class="panel"><h3>فروش ثبت‌شده</h3><div id="reportBox"></div></div></section>
-<section id="settings" class="page"><div class="page-head"><h1>همگام‌سازی ابری</h1></div><div class="panel"><h2>☁️ فضای ابری مشترک</h2><p>در نسخه نهایی، اطلاعات سه دستگاه از طریق یک فایل مشترک ابری همگام می‌شود.</p><div class="cloud-box"><div><span>وضعیت اتصال:</span><b id="cloudState">متصل نیست</b></div><button class="gold-btn" onclick="connectDrive()">اتصال Google Drive</button><button class="secondary-btn" onclick="syncNow()">همگام‌سازی الآن</button></div><div class="note"><b>پشتیبان‌گیری اطلاعات:</b> قبل از حذف مرورگر یا تعویض گوشی، از اطلاعات پشتیبان بگیر.</div>
+<section id="settings" class="page"><div class="page-head"><h1>همگام‌سازی ابری</h1></div><div class="panel"><h2>☁️ فضای ابری مشترک</h2><p>اطلاعات فروشگاه در یک فایل مشترک Google Drive نگهداری می‌شود تا بتوانی از گوشی و کامپیوتر به آن دسترسی داشته باشی.</p><div class="cloud-box"><div><span>وضعیت اتصال:</span><b id="cloudState">متصل نیست</b></div><button class="gold-btn" onclick="connectDrive()">اتصال Google Drive</button><button class="secondary-btn" onclick="syncNow()">همگام‌سازی الآن</button><button class="secondary-btn" onclick="disconnectDrive()">قطع اتصال</button></div><div class="note"><b>پشتیبان‌گیری اطلاعات:</b> قبل از حذف مرورگر یا تعویض گوشی، از اطلاعات پشتیبان بگیر.</div>
 <div class="cloud-box" style="margin-top:12px">
   <button class="gold-btn" onclick="exportBackup()">📥 دریافت فایل پشتیبان</button>
   <label class="secondary-btn" style="cursor:pointer;text-align:center">
@@ -106,7 +107,7 @@ function seed(){return {products:[
  {id:3,name:"دستگیره کابینت طلایی",code:"H-G01",stock:14,min:5,price:120000}
 ],invoices:[]}}
 function load(){const x=localStorage.getItem(KEY);if(x){Object.assign(state,JSON.parse(x));state.customers=state.customers||[]}else{Object.assign(state,seed());state.customers=[]}renderAll()}
-function save(){localStorage.setItem(KEY,JSON.stringify({products:state.products,invoices:state.invoices,customers:state.customers}));renderAll()}
+function save(){localStorage.setItem(KEY,JSON.stringify({products:state.products,invoices:state.invoices,customers:state.customers,driveFileId:state.driveFileId,lastRemoteModified:state.lastRemoteModified}));renderAll()}
 function openPage(id){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".bottom-nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===id));renderAll()}
 function renderAll(){renderProducts();renderDashboard();renderShopping();renderReports();renderInvoiceLines();renderCustomers();renderCustomerSelect()}
 function renderDashboard(){document.getElementById("statProducts").textContent=fa(state.products.length);document.getElementById("statLow").textContent=fa(state.products.filter(p=>p.stock<=p.min).length);let today=new Date().toISOString().slice(0,10);document.getElementById("statInvoices").textContent=fa(state.invoices.filter(i=>i.date===today).length);document.getElementById("statValue").textContent=fa(state.products.reduce((s,p)=>s+p.stock*p.price,0))}
@@ -193,9 +194,108 @@ function clearLocalData(){
 }
 
 function renderReports(){const el=document.getElementById("reportBox");if(!el)return;const total=state.invoices.reduce((s,i)=>s+i.items.reduce((a,l)=>{const p=state.products.find(x=>x.id===l.productId);return a+(p?p.price*l.qty:0)},0),0);el.innerHTML=`<p>تعداد فاکتورها: <b>${fa(state.invoices.length)}</b></p><p>مجموع فروش ثبت‌شده: <b>${fa(total)} تومان</b></p>`}
-async function connectDrive(){alert("برای اتصال واقعی، Client ID گوگل را در config.js وارد کنید و برنامه را روی HTTPS اجرا کنید.")}
-async function syncNow(){alert("اتصال Google Drive هنوز تنظیم نشده است. اطلاعات فعلی روی همین دستگاه ذخیره شده است.")}
+const GOOGLE_CLIENT_ID="74910524550-pkpngut40dfase8rgi93r0k8hdi5t769.apps.googleusercontent.com";
+const DRIVE_SCOPE="https://www.googleapis.com/auth/drive.file";
+const DRIVE_FILE_NAME="pahlavan-store-data.json";
+let driveTokenClient=null;
+let driveReady=false;
+
+function setCloudStatus(text, ok=false){
+  const a=document.getElementById("cloudState"), b=document.getElementById("syncStatus");
+  if(a){a.textContent=text;a.style.color=ok?"#1f7a3a":""}
+  if(b)b.textContent=ok?"ابری":"آفلاین";
+}
+function getLocalData(){return {app:"Pahlavan Store",version:1,updatedAt:new Date().toISOString(),products:state.products,customers:state.customers,invoices:state.invoices}}
+function driveHeaders(){return {Authorization:"Bearer "+state.token}}
+async function driveFetch(url,opts={}){
+  const r=await fetch(url,{...opts,headers:{...driveHeaders(),...(opts.headers||{})}});
+  if(r.status===401){state.token=null;driveReady=false;setCloudStatus("نیاز به ورود دوباره");throw new Error("AUTH_EXPIRED")}
+  if(!r.ok)throw new Error((await r.text()).slice(0,300)||("HTTP "+r.status));
+  return r;
+}
+function initDriveClient(){
+  if(!window.google?.accounts?.oauth2)return false;
+  if(driveTokenClient)return true;
+  driveTokenClient=google.accounts.oauth2.initTokenClient({
+    client_id:GOOGLE_CLIENT_ID,
+    scope:DRIVE_SCOPE,
+    callback:()=>{}
+  });
+  return true;
+}
+async function connectDrive(){
+  if(!initDriveClient()){alert("سرویس ورود گوگل هنوز بارگذاری نشده. چند ثانیه صبر کن و دوباره بزن.");return}
+  driveTokenClient.callback=async resp=>{
+    if(resp.error){console.error(resp);alert("اتصال به Google Drive انجام نشد. اگر پیام Test user یا دسترسی دیدی، همان حساب گوگلی را به Test users اضافه کن.");return}
+    state.token=resp.access_token;driveReady=true;
+    setCloudStatus("در حال بررسی فایل...",true);
+    try{await ensureCloudFile();await syncNow(true)}catch(e){console.error(e);setCloudStatus("خطا در اتصال");alert("اتصال انجام شد اما همگام‌سازی کامل نشد. دوباره تلاش کن.\n"+e.message)}
+  };
+  driveTokenClient.requestAccessToken({prompt:"consent"});
+}
+async function ensureCloudFile(){
+  if(!state.token)throw new Error("NO_TOKEN");
+  const q=`name='${DRIVE_FILE_NAME}' and trashed=false`;
+  const r=await driveFetch("https://www.googleapis.com/drive/v3/files?spaces=drive&q="+encodeURIComponent(q)+"&fields=files(id,name,mimeType,modifiedTime,version)&pageSize=10");
+  const j=await r.json();
+  if(j.files?.length){state.driveFileId=j.files[0].id;state.lastRemoteModified=j.files[0].modifiedTime;return j.files[0]}
+  const data=new Blob([JSON.stringify(getLocalData())],{type:"application/json"});
+  const meta={name:DRIVE_FILE_NAME,mimeType:"application/json"};
+  const boundary="pahlavan_"+Date.now();
+  const body=new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,JSON.stringify(meta),
+    `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n`,data,`\r\n--${boundary}--`
+  ]);
+  const cr=await driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,modifiedTime,version",{method:"POST",headers:{"Content-Type":"multipart/related; boundary="+boundary},body});
+  const f=await cr.json();state.driveFileId=f.id;state.lastRemoteModified=f.modifiedTime;return f;
+}
+async function readCloud(){
+  const r=await driveFetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?alt=media");
+  const d=await r.json();
+  if(!d||d.app!=="Pahlavan Store"||!Array.isArray(d.products)||!Array.isArray(d.customers)||!Array.isArray(d.invoices))throw new Error("فایل ابری معتبر نیست");
+  return d;
+}
+async function getCloudMeta(){
+  const r=await driveFetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?fields=id,name,modifiedTime,version");
+  return r.json();
+}
+async function uploadCloud(expectedModifiedTime){
+  const meta=await getCloudMeta();
+  if(expectedModifiedTime && meta.modifiedTime!==expectedModifiedTime){
+    throw new Error("CONFLICT");
+  }
+  const data=JSON.stringify(getLocalData());
+  const r=await driveFetch("https://www.googleapis.com/upload/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?uploadType=media&fields=id,modifiedTime,version",{method:"PATCH",headers:{"Content-Type":"application/json"},body:data});
+  return r.json();
+}
+async function syncNow(silent=false){
+  if(!state.token){if(!silent)await connectDrive();return}
+  try{
+    if(!state.driveFileId)await ensureCloudFile();
+    const meta=await getCloudMeta();
+    if(state.lastRemoteModified && meta.modifiedTime!==state.lastRemoteModified){
+      const cloud=await readCloud();
+      if(!confirm("اطلاعات Google Drive روی دستگاه دیگری تغییر کرده است.\n\nبرای جلوگیری از پاک شدن اطلاعات، اطلاعات ابری جایگزین اطلاعات این دستگاه شود؟"))return;
+      state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;save();
+      state.lastRemoteModified=meta.modifiedTime;setCloudStatus("همگام شد",true);return;
+    }
+    const up=await uploadCloud(state.lastRemoteModified);
+    state.lastRemoteModified=up.modifiedTime;state.connected=true;setCloudStatus("همگام شد",true);save();
+    if(!silent)alert("همگام‌سازی با Google Drive با موفقیت انجام شد.");
+  }catch(e){
+    console.error(e);
+    if(e.message==="CONFLICT"){
+      const cloud=await readCloud();
+      if(confirm("اطلاعات ابری جدیدتر است. اطلاعات ابری جایگزین اطلاعات این دستگاه شود؟")){state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;save();const m=await getCloudMeta();state.lastRemoteModified=m.modifiedTime;setCloudStatus("همگام شد",true)}
+    }else if(!silent)alert("همگام‌سازی انجام نشد.\n"+e.message);
+  }
+}
+function disconnectDrive(){
+  try{if(state.token)google.accounts.oauth2.revoke(state.token,()=>{});}catch(e){}
+  state.token=null;state.connected=false;state.driveFileId=null;state.lastRemoteModified=null;driveReady=false;setCloudStatus("متصل نیست");
+}
 load();
+setTimeout(()=>{if(initDriveClient())setCloudStatus("آماده اتصال")},800);
 
 </script>
 </body>
