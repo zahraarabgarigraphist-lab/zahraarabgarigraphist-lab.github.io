@@ -42,6 +42,7 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:13px;bor
 @media(max-width:700px){.quick-grid{grid-template-columns:repeat(2,1fr)}.bottom-nav button{font-size:11px}.cards{grid-template-columns:repeat(2,1fr)}.quick-grid{grid-template-columns:repeat(2,1fr)}.hero{flex-direction:column;align-items:stretch}.hero .gold-btn{width:100%}.form-grid{grid-template-columns:1fr}.cloud-box{flex-direction:column;align-items:stretch}.cloud-box button{width:100%}}
 </style>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
 </head>
 <body>
 <header class="topbar">
@@ -79,7 +80,8 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:13px;bor
 <div class="panel"><div class="table-wrap"><table><thead><tr><th>نام مشتری</th><th>شماره تماس</th><th>آدرس</th><th>فاکتورها</th><th></th></tr></thead><tbody id="customersBody"></tbody></table></div></div>
 </section>
 <section id="reports" class="page"><div class="page-head"><h1>گزارش‌ها</h1></div><div class="panel"><h3>فروش ثبت‌شده</h3><div id="reportBox"></div></div></section>
-<section id="settings" class="page"><div class="page-head"><h1>همگام‌سازی ابری</h1></div><div class="panel"><h2>☁️ فضای ابری مشترک</h2><p>اطلاعات فروشگاه در یک فایل مشترک Google Drive نگهداری می‌شود تا بتوانی از گوشی و کامپیوتر به آن دسترسی داشته باشی.</p><div class="cloud-box"><div><span>وضعیت اتصال:</span><b id="cloudState">متصل نیست</b></div><button class="gold-btn" onclick="connectDrive()">اتصال Google Drive</button><button class="secondary-btn" onclick="syncNow()">همگام‌سازی الآن</button><button class="secondary-btn" onclick="disconnectDrive()">قطع اتصال</button></div><div class="note"><b>پشتیبان‌گیری اطلاعات:</b> قبل از حذف مرورگر یا تعویض گوشی، از اطلاعات پشتیبان بگیر.</div>
+<section id="settings" class="page"><div class="page-head"><h1>همگام‌سازی ابری</h1></div><div class="panel"><h2>☁️ فضای ابری مشترک</h2><p>اطلاعات فروشگاه در یک فایل مشترک Google Drive نگهداری می‌شود تا بتوانی از گوشی و کامپیوتر به آن دسترسی داشته باشی.</p><div class="cloud-box"><div><span>وضعیت اتصال:</span><b id="cloudState">متصل نیست</b></div><button class="gold-btn" onclick="connectDrive()">اتصال Google Drive</button><button class="secondary-btn" onclick="pickSharedFile()">انتخاب فایل مشترک</button><button class="secondary-btn" onclick="syncNow()">همگام‌سازی الآن</button><button class="secondary-btn" onclick="disconnectDrive()">قطع اتصال</button></div>
+<div class="note" style="margin-top:12px"><b>فایل مشترک فروشگاه:</b><span id="cloudFileName"> هنوز انتخاب نشده</span><br><small>هر دو گوشی باید همین فایل را از Google Drive انتخاب کنند؛ در این حالت حساب Google هر گوشی می‌تواند جدا باشد.</small></div><div class="note"><b>پشتیبان‌گیری اطلاعات:</b> قبل از حذف مرورگر یا تعویض گوشی، از اطلاعات پشتیبان بگیر.</div>
 <div class="cloud-box" style="margin-top:12px">
   <button class="gold-btn" onclick="exportBackup()">📥 دریافت فایل پشتیبان</button>
   <label class="secondary-btn" style="cursor:pointer;text-align:center">
@@ -106,7 +108,7 @@ function seed(){return {products:[
  {id:2,name:"ریل ساچمه‌ای 45",code:"R-045",stock:8,min:10,price:190000},
  {id:3,name:"دستگیره کابینت طلایی",code:"H-G01",stock:14,min:5,price:120000}
 ],invoices:[]}}
-function load(){const x=localStorage.getItem(KEY);if(x){Object.assign(state,JSON.parse(x));state.customers=state.customers||[]}else{Object.assign(state,seed());state.customers=[]}renderAll()}
+function load(){const x=localStorage.getItem(KEY);if(x){Object.assign(state,JSON.parse(x));state.customers=state.customers||[]}else{Object.assign(state,seed());state.customers=[]}updateCloudFileLabel(state.driveFileId?DRIVE_FILE_NAME:"");renderAll()}
 function save(){localStorage.setItem(KEY,JSON.stringify({products:state.products,invoices:state.invoices,customers:state.customers,driveFileId:state.driveFileId,lastRemoteModified:state.lastRemoteModified}));renderAll()}
 function openPage(id){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".bottom-nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===id));renderAll()}
 function renderAll(){renderProducts();renderDashboard();renderShopping();renderReports();renderInvoiceLines();renderCustomers();renderCustomerSelect()}
@@ -197,6 +199,12 @@ function renderReports(){const el=document.getElementById("reportBox");if(!el)re
 const GOOGLE_CLIENT_ID="74910524550-pkpngut40dfase8rgi93r0k8hdi5t769.apps.googleusercontent.com";
 const DRIVE_SCOPE="https://www.googleapis.com/auth/drive.file";
 const DRIVE_FILE_NAME="pahlavan-store-data.json";
+const GOOGLE_APP_ID="74910524550"; // شماره پروژه Google Cloud
+function getPickerApiKey(){
+  let key=localStorage.getItem("pahlavan_picker_api_key")||"";
+  if(!key){key=prompt("کلید Google Picker را وارد کن:\n\nاین کلید را فقط از Google Cloud پروژه Pahlavan Store بگیر.");if(key){key=key.trim();localStorage.setItem("pahlavan_picker_api_key",key);}}
+  return key;
+}
 let driveTokenClient=null;
 let driveReady=false;
 
@@ -233,12 +241,60 @@ async function connectDrive(){
   };
   driveTokenClient.requestAccessToken({prompt:"consent"});
 }
+
+function updateCloudFileLabel(name){
+  const el=document.getElementById("cloudFileName");
+  if(el)el.textContent=name?" "+name:" هنوز انتخاب نشده";
+}
+async function applySelectedCloudFile(fileId,fileName){
+  if(!fileId)throw new Error("فایل انتخاب نشد");
+  state.driveFileId=fileId;
+  state.lastRemoteModified=null;
+  updateCloudFileLabel(fileName||"pahlavan-store-data.json");
+  save();
+  const cloud=await readCloud();
+  state.products=cloud.products;
+  state.customers=cloud.customers;
+  state.invoices=cloud.invoices;
+  const m=await getCloudMeta();
+  state.lastRemoteModified=m.modifiedTime;
+  state.connected=true;
+  setCloudStatus("همگام شد",true);
+  save();
+  renderAll();
+  alert("فایل مشترک فروشگاه با موفقیت انتخاب شد و اطلاعات آن روی این دستگاه بارگذاری شد.");
+}
+function pickSharedFile(){
+  if(!state.token){alert("اول روی «اتصال Google Drive» بزن و وارد حساب Google شو.");return}
+  const pickerApiKey=getPickerApiKey();
+  if(!pickerApiKey){alert("بدون Google API Key امکان انتخاب فایل مشترک وجود ندارد.");return}
+  const openPicker=()=>{
+    const view=new google.picker.DocsView(google.picker.ViewId.DOCS)
+      .setIncludeFolders(false)
+      .setMimeTypes("application/json");
+    const picker=new google.picker.PickerBuilder()
+      .setDeveloperKey(pickerApiKey)
+      .setAppId(GOOGLE_APP_ID)
+      .setOAuthToken(state.token)
+      .setOrigin(window.location.protocol+"//"+window.location.host)
+      .addView(view)
+      .setCallback(async data=>{
+        if(data.action===google.picker.Action.PICKED){
+          const doc=data.docs[0];
+          try{await applySelectedCloudFile(doc.id,doc.name)}catch(e){console.error(e);alert("خواندن فایل مشترک انجام نشد. مطمئن شو فایل با این حساب به اشتراک گذاشته شده و فایل پشتیبان فروشگاه است.\n"+e.message)}
+        }
+      }).build();
+    picker.setVisible(true);
+  };
+  if(window.gapi?.load){gapi.load("picker",openPicker);}
+  else{alert("Google Picker هنوز بارگذاری نشده. چند ثانیه صبر کن و دوباره بزن.");}
+}
 async function ensureCloudFile(){
   if(!state.token)throw new Error("NO_TOKEN");
   const q=`name='${DRIVE_FILE_NAME}' and trashed=false`;
   const r=await driveFetch("https://www.googleapis.com/drive/v3/files?spaces=drive&q="+encodeURIComponent(q)+"&fields=files(id,name,mimeType,modifiedTime,version)&pageSize=10");
   const j=await r.json();
-  if(j.files?.length){state.driveFileId=j.files[0].id;state.lastRemoteModified=j.files[0].modifiedTime;return j.files[0]}
+  if(j.files?.length){state.driveFileId=j.files[0].id;state.lastRemoteModified=j.files[0].modifiedTime;updateCloudFileLabel(j.files[0].name);return j.files[0]}
   const data=new Blob([JSON.stringify(getLocalData())],{type:"application/json"});
   const meta={name:DRIVE_FILE_NAME,mimeType:"application/json"};
   const boundary="pahlavan_"+Date.now();
@@ -247,7 +303,7 @@ async function ensureCloudFile(){
     `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n`,data,`\r\n--${boundary}--`
   ]);
   const cr=await driveFetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,mimeType,modifiedTime,version",{method:"POST",headers:{"Content-Type":"multipart/related; boundary="+boundary},body});
-  const f=await cr.json();state.driveFileId=f.id;state.lastRemoteModified=f.modifiedTime;return f;
+  const f=await cr.json();state.driveFileId=f.id;state.lastRemoteModified=f.modifiedTime;updateCloudFileLabel(f.name);return f;
 }
 async function readCloud(){
   const r=await driveFetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?alt=media");
@@ -292,7 +348,7 @@ async function syncNow(silent=false){
 }
 function disconnectDrive(){
   try{if(state.token)google.accounts.oauth2.revoke(state.token,()=>{});}catch(e){}
-  state.token=null;state.connected=false;state.driveFileId=null;state.lastRemoteModified=null;driveReady=false;setCloudStatus("متصل نیست");
+  state.token=null;state.connected=false;state.driveFileId=null;state.lastRemoteModified=null;driveReady=false;updateCloudFileLabel("");setCloudStatus("متصل نیست");
 }
 load();
 setTimeout(()=>{if(initDriveClient())setCloudStatus("آماده اتصال")},800);
