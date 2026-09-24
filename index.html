@@ -213,10 +213,16 @@ function setCloudStatus(text, ok=false){
   if(a){a.textContent=text;a.style.color=ok?"#1f7a3a":""}
   if(b)b.textContent=ok?"ابری":"آفلاین";
 }
-function getLocalData(){return {app:"Pahlavan Store",version:1,updatedAt:new Date().toISOString(),products:state.products,customers:state.customers,invoices:state.invoices}}
+function getLocalData(){return {app:"Pahlavan Store",version:2,syncEngine:"drive-cache-safe",updatedAt:new Date().toISOString(),products:state.products,customers:state.customers,invoices:state.invoices}}
 function driveHeaders(){return {Authorization:"Bearer "+state.token}}
+function noCacheUrl(url){
+  const sep=url.includes("?")?"&":"?";
+  return url+sep+"pahlavan_cb="+Date.now()+"_"+Math.random().toString(36).slice(2);
+}
 async function driveFetch(url,opts={}){
-  const r=await fetch(url,{...opts,headers:{...driveHeaders(),...(opts.headers||{})}});
+  const method=(opts.method||"GET").toUpperCase();
+  const finalUrl=method==="GET"?noCacheUrl(url):url;
+  const r=await fetch(finalUrl,{...opts,cache:"no-store",headers:{...driveHeaders(),"Cache-Control":"no-cache",Pragma:"no-cache",...(opts.headers||{})}});
   if(r.status===401){state.token=null;driveReady=false;setCloudStatus("نیاز به ورود دوباره");throw new Error("AUTH_EXPIRED")}
   if(!r.ok)throw new Error((await r.text()).slice(0,300)||("HTTP "+r.status));
   return r;
@@ -316,12 +322,14 @@ async function ensureCloudFile(){
   const f=await cr.json();state.driveFileId=f.id;state.lastRemoteModified=f.modifiedTime;updateCloudFileLabel(f.name);return f;
 }
 async function readCloud(){
+  // Always bypass browser/proxy cache so the second device receives the newest Drive revision.
   const r=await driveFetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?alt=media");
   const d=await r.json();
-  if(!d||d.app!=="Pahlavan Store"||!Array.isArray(d.products)||!Array.isArray(d.customers)||!Array.isArray(d.invoices))throw new Error("فایل ابری معتبر نیست");
+  if(!d||d.app!=="Pahlavan Store"||(d.version!==1&&d.version!==2)||!Array.isArray(d.products)||!Array.isArray(d.customers)||!Array.isArray(d.invoices))throw new Error("فایل ابری معتبر نیست");
   return d;
 }
 async function getCloudMeta(){
+  // Always fetch fresh metadata; stale modifiedTime was causing false "already synced" states.
   const r=await driveFetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?fields=id,name,modifiedTime,version");
   return r.json();
 }
@@ -331,8 +339,12 @@ async function uploadCloud(expectedModifiedTime){
     throw new Error("CONFLICT");
   }
   const data=JSON.stringify(getLocalData());
-  const r=await driveFetch("https://www.googleapis.com/upload/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?uploadType=media&fields=id,modifiedTime,version",{method:"PATCH",headers:{"Content-Type":"application/json"},body:data});
-  return r.json();
+  // Upload the complete JSON as a new Drive revision.
+  const r=await driveFetch("https://www.googleapis.com/upload/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?uploadType=media&fields=id,modifiedTime,version",{method:"PATCH",headers:{"Content-Type":"application/json; charset=UTF-8"},body:data});
+  const result=await r.json();
+  // Re-read metadata after the upload so both devices store the actual new revision time.
+  const fresh=await getCloudMeta();
+  return {...result,...fresh};
 }
 async function syncNow(silent=false){
   if(!state.token){if(!silent)await connectDrive();return}
@@ -359,7 +371,10 @@ async function syncNow(silent=false){
         state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;
         state.lastRemoteModified=meta.modifiedTime;state.localDirty=false;save(false);setCloudStatus("همگام شد",true);
       }else{
-        const up=await uploadCloud(meta.modifiedTime);state.lastRemoteModified=up.modifiedTime;state.connected=true;state.localDirty=false;save(false);setCloudStatus("همگام شد",true);
+        const up=await uploadCloud(meta.modifiedTime);
+        const verify=await readCloud();
+        if(!verify||!Array.isArray(verify.products))throw new Error("VERIFY_FAILED");
+        state.lastRemoteModified=up.modifiedTime;state.connected=true;state.localDirty=false;save(false);setCloudStatus("همگام شد",true);
       }
       return;
     }
