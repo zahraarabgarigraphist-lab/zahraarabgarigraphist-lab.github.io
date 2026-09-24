@@ -101,15 +101,15 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:13px;bor
 </nav>
 <script>
 const KEY="pahlavan_store_v1";
-const state={products:[],invoices:[],customers:[],connected:false,driveFileId:null,lastRemoteModified:null,token:null};
+const state={products:[],invoices:[],customers:[],connected:false,driveFileId:null,lastRemoteModified:null,token:null,localDirty:false};
 const fa=n=>Number(n||0).toLocaleString("fa-IR");
 function seed(){return {products:[
  {id:1,name:"لولا آرام‌بند",code:"L-001",stock:20,min:5,price:85000},
  {id:2,name:"ریل ساچمه‌ای 45",code:"R-045",stock:8,min:10,price:190000},
  {id:3,name:"دستگیره کابینت طلایی",code:"H-G01",stock:14,min:5,price:120000}
 ],invoices:[]}}
-function load(){const x=localStorage.getItem(KEY);if(x){Object.assign(state,JSON.parse(x));state.customers=state.customers||[]}else{Object.assign(state,seed());state.customers=[]}updateCloudFileLabel(state.driveFileId?DRIVE_FILE_NAME:"");renderAll()}
-function save(){localStorage.setItem(KEY,JSON.stringify({products:state.products,invoices:state.invoices,customers:state.customers,driveFileId:state.driveFileId,lastRemoteModified:state.lastRemoteModified}));renderAll()}
+function load(){const x=localStorage.getItem(KEY);if(x){Object.assign(state,JSON.parse(x));state.customers=state.customers||[];state.localDirty=!!state.localDirty}else{Object.assign(state,seed());state.customers=[]}updateCloudFileLabel(state.driveFileId?DRIVE_FILE_NAME:"");renderAll()}
+function save(markDirty=true){if(markDirty)state.localDirty=true;localStorage.setItem(KEY,JSON.stringify({products:state.products,invoices:state.invoices,customers:state.customers,driveFileId:state.driveFileId,lastRemoteModified:state.lastRemoteModified,localDirty:state.localDirty}));renderAll()}
 function openPage(id){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".bottom-nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===id));renderAll()}
 function renderAll(){renderProducts();renderDashboard();renderShopping();renderReports();renderInvoiceLines();renderCustomers();renderCustomerSelect()}
 function renderDashboard(){document.getElementById("statProducts").textContent=fa(state.products.length);document.getElementById("statLow").textContent=fa(state.products.filter(p=>p.stock<=p.min).length);let today=new Date().toISOString().slice(0,10);document.getElementById("statInvoices").textContent=fa(state.invoices.filter(i=>i.date===today).length);document.getElementById("statValue").textContent=fa(state.products.reduce((s,p)=>s+p.stock*p.price,0))}
@@ -236,8 +236,18 @@ async function connectDrive(){
   driveTokenClient.callback=async resp=>{
     if(resp.error){console.error(resp);alert("اتصال به Google Drive انجام نشد. اگر پیام Test user یا دسترسی دیدی، همان حساب گوگلی را به Test users اضافه کن.");return}
     state.token=resp.access_token;driveReady=true;
-    setCloudStatus("در حال بررسی فایل...",true);
-    try{await ensureCloudFile();await syncNow(true)}catch(e){console.error(e);setCloudStatus("خطا در اتصال");alert("اتصال انجام شد اما همگام‌سازی کامل نشد. دوباره تلاش کن.\n"+e.message)}
+    setCloudStatus("متصل شد — فایل مشترک را انتخاب کن",true);
+    try{
+      if(state.driveFileId){
+        const cloud=await readCloud();
+        state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;
+        const m=await getCloudMeta();state.lastRemoteModified=m.modifiedTime;state.localDirty=false;
+        save(false);setCloudStatus("همگام شد",true);
+      }
+    }catch(e){
+      console.error(e);setCloudStatus("متصل شد — فایل را انتخاب کن",true);
+      if(e.message!=="AUTH_EXPIRED") alert("اتصال Google انجام شد. حالا روی «انتخاب فایل مشترک» بزن و همان فایل pahlavan-store-data.json را انتخاب کن.");
+    }
   };
   driveTokenClient.requestAccessToken({prompt:"consent"});
 }
@@ -251,16 +261,16 @@ async function applySelectedCloudFile(fileId,fileName){
   state.driveFileId=fileId;
   state.lastRemoteModified=null;
   updateCloudFileLabel(fileName||"pahlavan-store-data.json");
-  save();
+  save(false);
   const cloud=await readCloud();
   state.products=cloud.products;
   state.customers=cloud.customers;
   state.invoices=cloud.invoices;
   const m=await getCloudMeta();
   state.lastRemoteModified=m.modifiedTime;
-  state.connected=true;
+  state.connected=true;state.localDirty=false;
   setCloudStatus("همگام شد",true);
-  save();
+  save(false);
   renderAll();
   alert("فایل مشترک فروشگاه با موفقیت انتخاب شد و اطلاعات آن روی این دستگاه بارگذاری شد.");
 }
@@ -326,29 +336,45 @@ async function uploadCloud(expectedModifiedTime){
 }
 async function syncNow(silent=false){
   if(!state.token){if(!silent)await connectDrive();return}
+  if(!state.driveFileId){
+    if(!silent)alert("اول روی «انتخاب فایل مشترک» بزن و فایل pahlavan-store-data.json را انتخاب کن.");
+    return;
+  }
   try{
-    if(!state.driveFileId)await ensureCloudFile();
     const meta=await getCloudMeta();
+    // اگر این دستگاه تغییر محلی ندارد، همیشه آخرین نسخه ابری را دریافت کن.
+    if(!state.localDirty){
+      const cloud=await readCloud();
+      state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;
+      state.lastRemoteModified=meta.modifiedTime;state.connected=true;state.localDirty=false;
+      setCloudStatus("همگام شد",true);save(false);
+      if(!silent)alert("اطلاعات جدید از Google Drive دریافت شد.");
+      return;
+    }
+    // اگر این دستگاه تغییر کرده، فقط در صورتی ارسال کن که فایل ابری از آخرین نسخه‌ای که دیده‌ای تغییر نکرده باشد.
     if(state.lastRemoteModified && meta.modifiedTime!==state.lastRemoteModified){
       const cloud=await readCloud();
-      if(!confirm("اطلاعات Google Drive روی دستگاه دیگری تغییر کرده است.\n\nبرای جلوگیری از پاک شدن اطلاعات، اطلاعات ابری جایگزین اطلاعات این دستگاه شود؟"))return;
-      state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;save();
-      state.lastRemoteModified=meta.modifiedTime;setCloudStatus("همگام شد",true);return;
+      const useCloud=confirm("هم روی این دستگاه و هم در Google Drive تغییراتی وجود دارد.\n\nOK = اطلاعات Google Drive روی این دستگاه قرار بگیرد\nCancel = اطلاعات این دستگاه به Google Drive ارسال شود و نسخه ابری جایگزین شود.");
+      if(useCloud){
+        state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;
+        state.lastRemoteModified=meta.modifiedTime;state.localDirty=false;save(false);setCloudStatus("همگام شد",true);
+      }else{
+        const up=await uploadCloud(meta.modifiedTime);state.lastRemoteModified=up.modifiedTime;state.connected=true;state.localDirty=false;save(false);setCloudStatus("همگام شد",true);
+      }
+      return;
     }
     const up=await uploadCloud(state.lastRemoteModified);
-    state.lastRemoteModified=up.modifiedTime;state.connected=true;setCloudStatus("همگام شد",true);save();
-    if(!silent)alert("همگام‌سازی با Google Drive با موفقیت انجام شد.");
+    state.lastRemoteModified=up.modifiedTime;state.connected=true;state.localDirty=false;setCloudStatus("همگام شد",true);save(false);
+    if(!silent)alert("تغییرات این دستگاه با Google Drive همگام شد.");
   }catch(e){
     console.error(e);
-    if(e.message==="CONFLICT"){
-      const cloud=await readCloud();
-      if(confirm("اطلاعات ابری جدیدتر است. اطلاعات ابری جایگزین اطلاعات این دستگاه شود؟")){state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;save();const m=await getCloudMeta();state.lastRemoteModified=m.modifiedTime;setCloudStatus("همگام شد",true)}
-    }else if(!silent)alert("همگام‌سازی انجام نشد.\n"+e.message);
+    if(e.message==="CONFLICT") alert("فایل Google Drive هم‌زمان تغییر کرده است. دوباره «همگام‌سازی الآن» را بزن.");
+    else if(!silent)alert("همگام‌سازی انجام نشد.\n"+e.message);
   }
 }
 function disconnectDrive(){
   try{if(state.token)google.accounts.oauth2.revoke(state.token,()=>{});}catch(e){}
-  state.token=null;state.connected=false;state.driveFileId=null;state.lastRemoteModified=null;driveReady=false;updateCloudFileLabel("");setCloudStatus("متصل نیست");
+  state.token=null;state.connected=false;state.driveFileId=null;state.lastRemoteModified=null;state.localDirty=false;driveReady=false;updateCloudFileLabel("");setCloudStatus("متصل نیست");
 }
 load();
 setTimeout(()=>{if(initDriveClient())setCloudStatus("آماده اتصال")},800);
