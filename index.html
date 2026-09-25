@@ -114,7 +114,7 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:13px;bor
 <script>
 const KEY="pahlavan_store_v1";
 const DEFAULT_SETTINGS={inflationRate:30,rent:0,utilities:0,other:0,ui:{theme:'gold',accent:'#d0a849',bg:'#f3efe7',storeName:'فروشگاه یراق آلات کابینت پهلوان',quote:'«رزق آید پیش هر که صبر جست؛ رنج کوشش‌ها ز بی‌صبری تست»',menus:{dashboard:{label:'خانه',icon:'⌂',visible:true},products:{label:'کالاها',icon:'▣',visible:true},invoice:{label:'فاکتور',icon:'＋',visible:true},shopping:{label:'خرید',icon:'🛒',visible:true},customers:{label:'مشتریان',icon:'👤',visible:true},reports:{label:'گزارش‌ها',icon:'📊',visible:true},profit:{label:'سود',icon:'💰',visible:true},settings:{label:'تنظیمات',icon:'⚙',visible:true}},custom:[]},invoice:{title:'فاکتور فروش',sellerName:'فروشگاه یراق آلات کابینت پهلوان',sellerPhone:'',sellerAddress:'',sellerNationalId:'',footer:'از خرید شما سپاسگزاریم',stampText:'مهر فروشگاه',signatureText:'امضا',paper:'A4',showLogo:true,showSeller:true,showCustomer:true,showPayment:true,showNote:true,showStamp:true,showSignature:true}};
-const state={products:[],invoices:[],customers:[],deletedInvoiceIds:[],deletedProductIds:[],settings:{...DEFAULT_SETTINGS},connected:false,driveFileId:null,lastRemoteModified:null,token:null,localDirty:false};
+const state={products:[],invoices:[],customers:[],deletedInvoiceIds:[],deletedProductIds:[],productTombstones:[],settings:{...DEFAULT_SETTINGS},connected:false,driveFileId:null,lastRemoteModified:null,token:null,localDirty:false};
 const fa=n=>Number(n||0).toLocaleString("fa-IR");
 function jalaliDate(iso){if(!iso)return "—";const d=new Date(String(iso).slice(0,10)+"T12:00:00");if(Number.isNaN(d.getTime()))return iso;const parts=new Intl.DateTimeFormat("fa-IR-u-ca-persian",{year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d);const get=t=>parts.find(x=>x.type===t)?.value||"";return `${get("year")}\/${get("month")}\/${get("day")}`;}
 function seed(){return {products:[
@@ -122,16 +122,16 @@ function seed(){return {products:[
  {id:2,name:"ریل ساچمه‌ای 45",code:"R-045",stock:8,min:10,price:190000,costPrice:125000},
  {id:3,name:"دستگیره کابینت طلایی",code:"H-G01",stock:14,min:5,price:120000,costPrice:70000}
 ],invoices:[],settings:{...DEFAULT_SETTINGS}}}
-function load(){const x=localStorage.getItem(KEY);if(x){Object.assign(state,JSON.parse(x));state.customers=state.customers||[];state.deletedInvoiceIds=Array.isArray(state.deletedInvoiceIds)?state.deletedInvoiceIds.map(String):[];state.deletedProductIds=Array.isArray(state.deletedProductIds)?state.deletedProductIds.map(String):[];state.products=(state.products||[]).filter(p=>!state.deletedProductIds.includes(String(p.id)));state.invoices=(state.invoices||[]).filter(i=>!state.deletedInvoiceIds.includes(String(i.id)));state.settings={...DEFAULT_SETTINGS,...(state.settings||{}),ui:{...DEFAULT_SETTINGS.ui,...(state.settings?.ui||{}),quote:state.settings?.ui?.quote??DEFAULT_SETTINGS.ui.quote,menus:{...DEFAULT_SETTINGS.ui.menus,...(state.settings?.ui?.menus||{})},custom:[...(state.settings?.ui?.custom||[])]},invoice:{...DEFAULT_SETTINGS.invoice,...(state.settings?.invoice||{})}};applyUISettings();renderMenuSettings();state.products=(state.products||[]).map(p=>({...p,costPrice:Number(p.costPrice||0)}));state.localDirty=!!state.localDirty}else{Object.assign(state,seed());state.customers=[];state.settings={...DEFAULT_SETTINGS,ui:{...DEFAULT_SETTINGS.ui,menus:{...DEFAULT_SETTINGS.ui.menus},custom:[]},invoice:{...DEFAULT_SETTINGS.invoice}}}applyUISettings();renderMenuSettings();updateCloudFileLabel(state.driveFileId?DRIVE_FILE_NAME:"");const nowMonth=new Date().toISOString().slice(0,7);const rm=document.getElementById("reportMonth");if(rm)rm.value=nowMonth;const pm=document.getElementById("profitMonth");if(pm)pm.value=nowMonth;renderFinancialSettings();renderAll()}
-function save(markDirty=true){if(markDirty)state.localDirty=true;localStorage.setItem(KEY,JSON.stringify({products:state.products,invoices:state.invoices,customers:state.customers,deletedInvoiceIds:state.deletedInvoiceIds,deletedProductIds:state.deletedProductIds,settings:state.settings,driveFileId:state.driveFileId,lastRemoteModified:state.lastRemoteModified,localDirty:state.localDirty}));renderAll()}
+function load(){const x=localStorage.getItem(KEY);if(x){Object.assign(state,JSON.parse(x));state.customers=state.customers||[];state.deletedInvoiceIds=Array.isArray(state.deletedInvoiceIds)?state.deletedInvoiceIds.map(String):[];state.deletedProductIds=Array.isArray(state.deletedProductIds)?state.deletedProductIds.map(String):[];state.productTombstones=Array.isArray(state.productTombstones)?state.productTombstones:[];state.deletedProductIds=Array.from(new Set([...state.deletedProductIds,...state.productTombstones.map(t=>String(t.id))]));state.products=(state.products||[]).filter(p=>!state.deletedProductIds.includes(String(p.id)));state.invoices=(state.invoices||[]).filter(i=>!state.deletedInvoiceIds.includes(String(i.id)));state.settings={...DEFAULT_SETTINGS,...(state.settings||{}),ui:{...DEFAULT_SETTINGS.ui,...(state.settings?.ui||{}),quote:state.settings?.ui?.quote??DEFAULT_SETTINGS.ui.quote,menus:{...DEFAULT_SETTINGS.ui.menus,...(state.settings?.ui?.menus||{})},custom:[...(state.settings?.ui?.custom||[])]},invoice:{...DEFAULT_SETTINGS.invoice,...(state.settings?.invoice||{})}};applyUISettings();renderMenuSettings();state.products=(state.products||[]).map(p=>({...p,costPrice:Number(p.costPrice||0)}));state.localDirty=!!state.localDirty}else{Object.assign(state,seed());state.customers=[];state.settings={...DEFAULT_SETTINGS,ui:{...DEFAULT_SETTINGS.ui,menus:{...DEFAULT_SETTINGS.ui.menus},custom:[]},invoice:{...DEFAULT_SETTINGS.invoice}}}applyUISettings();renderMenuSettings();updateCloudFileLabel(state.driveFileId?DRIVE_FILE_NAME:"");const nowMonth=new Date().toISOString().slice(0,7);const rm=document.getElementById("reportMonth");if(rm)rm.value=nowMonth;const pm=document.getElementById("profitMonth");if(pm)pm.value=nowMonth;renderFinancialSettings();renderAll()}
+function save(markDirty=true){if(markDirty)state.localDirty=true;localStorage.setItem(KEY,JSON.stringify({products:state.products,invoices:state.invoices,customers:state.customers,deletedInvoiceIds:state.deletedInvoiceIds,deletedProductIds:state.deletedProductIds,productTombstones:state.productTombstones,settings:state.settings,driveFileId:state.driveFileId,lastRemoteModified:state.lastRemoteModified,localDirty:state.localDirty}));renderAll()}
 function openPage(id){document.querySelectorAll(".page").forEach(x=>x.classList.remove("active"));document.getElementById(id).classList.add("active");document.querySelectorAll(".bottom-nav button").forEach(x=>x.classList.toggle("active",x.dataset.page===id));renderAll()}
 function renderAll(){renderProducts();renderDashboard();renderShopping();renderReports();renderProfit();renderInvoiceLines();renderCustomers();renderInvoiceHistory();renderCustomerSelect();filterInvoiceCustomers();renderMenuSettings();renderCustomMenuList();renderQuote();renderUISettings();const it=document.getElementById('invoiceTodayLabel');if(it)it.textContent=jalaliDate(new Date().toISOString().slice(0,10))}
 function renderDashboard(){const today=new Date().toISOString().slice(0,10);const now=new Date();const ym=today.slice(0,7);const todayInv=state.invoices.filter(i=>i.date===today);const monthInv=state.invoices.filter(i=>(i.date||'').slice(0,7)===ym);const todaySales=todayInv.reduce((s,i)=>s+invoiceSales(i),0);const monthSales=monthInv.reduce((s,i)=>s+invoiceSales(i),0);document.getElementById("statProducts").textContent=fa(state.products.length);document.getElementById("statLow").textContent=fa(state.products.filter(p=>Number(p.stock||0)<=Number(p.min||0)).length);document.getElementById("statInvoices").textContent=fa(todayInv.length);document.getElementById("statTodaySales").textContent=fa(todaySales);document.getElementById("statMonthSales").textContent=fa(monthSales);document.getElementById("statValue").textContent=fa(state.products.reduce((s,p)=>s+Number(p.stock||0)*Number(p.costPrice||0),0))}
 function renderProducts(){const q=(document.getElementById("productSearch")?.value||"").trim().toLowerCase();const body=document.getElementById("productsBody");if(!body)return;body.innerHTML=state.products.filter(p=>(p.name+" "+p.code).toLowerCase().includes(q)).map(p=>`<tr><td>${p.name}</td><td>${p.code||"—"}</td><td class="${p.stock<=p.min?'low':''}">${fa(p.stock)}</td><td>${fa(p.min)}</td><td>${fa(p.price)} تومان</td><td>${fa(p.costPrice||0)} تومان</td><td><button class="secondary-btn" onclick="editProduct(${p.id})">ویرایش</button> <button class="secondary-btn" onclick="deleteProduct(${p.id})">حذف</button></td></tr>`).join("")||`<tr><td colspan="7">کالایی ثبت نشده است.</td></tr>`}
 function addProduct(){const name=prompt("نام کالا؟");if(!name)return;const code=prompt("کد کالا؟")||"";const stock=+prompt("موجودی اولیه؟","0")||0;const min=+prompt("حداقل موجودی؟","1")||0;const costPrice=+prompt("قیمت خرید هر عدد؟","0")||0;const price=+prompt("قیمت فروش هر عدد؟","0")||0;state.products.push({id:Date.now(),name,code,stock,min,price,costPrice});save()}
 function editProduct(id){const p=state.products.find(x=>x.id===id);if(!p)return;const name=prompt("نام کالا:",p.name);if(name===null)return;p.name=name;const code=prompt("کد کالا:",p.code||"");if(code!==null)p.code=code;const stock=prompt("موجودی جدید:",p.stock);if(stock!==null)p.stock=Math.max(0,+stock||0);const min=prompt("حداقل موجودی:",p.min);if(min!==null)p.min=Math.max(0,+min||0);const cost=prompt("قیمت خرید هر عدد:",p.costPrice||0);if(cost!==null)p.costPrice=Math.max(0,+cost||0);const price=prompt("قیمت فروش هر عدد:",p.price);if(price!==null)p.price=Math.max(0,+price||0);save()}
-function deleteProduct(id){const p=state.products.find(x=>x.id===id);if(!p)return;if(!confirm(`کالای «${p.name}» حذف شود؟
-سوابق فاکتورهای قبلی حفظ می‌شوند و از موجودی فعلی هم حذف خواهد شد.`))return;state.products=state.products.filter(x=>x.id!==id);state.deletedProductIds=Array.from(new Set([...(state.deletedProductIds||[]).map(String),String(id)]));draft=draft.filter(x=>x.productId!==id);save();alert("کالا حذف شد. با همگام‌سازی، روی دستگاه‌های دیگر هم حذف می‌ماند.")}
+function deleteProduct(id){const p=state.products.find(x=>String(x.id)===String(id));if(!p)return;if(!confirm(`کالای «${p.name}» حذف شود؟
+سوابق فاکتورهای قبلی حفظ می‌شوند و از موجودی فعلی هم حذف خواهد شد.`))return;state.products=state.products.filter(x=>String(x.id)!==String(id));state.deletedProductIds=Array.from(new Set([...(state.deletedProductIds||[]).map(String),String(id)]));state.productTombstones=Array.from(new Map([...(state.productTombstones||[]).map(t=>[String(t.id),t]),[String(id),{id:String(id),name:p.name,deletedAt:new Date().toISOString()}]]).values());draft=draft.filter(x=>x.productId!==id);save();alert("کالا حذف شد. با همگام‌سازی، روی دستگاه‌های دیگر هم حذف می‌ماند.")}
 let draft=[];
 function addInvoiceLine(){if(!state.products.length){alert("اول حداقل یک کالا ثبت کن.");return}draft.push({productId:state.products[0].id,qty:1});renderInvoiceLines()}
 function lineInfo(l){const p=state.products.find(x=>x.id===l.productId);return {p,unit:Number(l.unitPrice??p?.price??0),cost:Number(l.costPrice??p?.costPrice??0)}}
@@ -216,7 +216,7 @@ function importBackup(input){
       }
       if(!confirm("اطلاعات فعلی با این پشتیبان جایگزین شود؟"))return;
       state.deletedInvoiceIds=Array.isArray(data.deletedInvoiceIds)?data.deletedInvoiceIds.map(String):[];
-      state.deletedProductIds=Array.isArray(data.deletedProductIds)?data.deletedProductIds.map(String):[];
+      state.deletedProductIds=Array.isArray(data.deletedProductIds)?data.deletedProductIds.map(String):[];state.productTombstones=Array.isArray(data.productTombstones)?data.productTombstones:[];state.deletedProductIds=Array.from(new Set([...state.deletedProductIds,...state.productTombstones.map(t=>String(t.id))]));
       state.products=(data.products||[]).filter(p=>!state.deletedProductIds.includes(String(p.id)));
       state.customers=data.customers;
       state.invoices=(data.invoices||[]).filter(i=>!state.deletedInvoiceIds.includes(String(i.id)));
@@ -231,7 +231,7 @@ function importBackup(input){
 function clearLocalData(){
   if(!confirm("هشدار: همه اطلاعات این دستگاه حذف می‌شود. مطمئنی؟"))return;
   localStorage.removeItem(KEY);
-  state.products=[];state.customers=[];state.invoices=[];state.deletedInvoiceIds=[];state.deletedProductIds=[];
+  state.products=[];state.customers=[];state.invoices=[];state.deletedInvoiceIds=[];state.deletedProductIds=[];state.productTombstones=[];
   renderAll();
   alert("اطلاعات محلی حذف شد.");
 }
@@ -284,8 +284,8 @@ function setCloudStatus(text, ok=false){
   if(a){a.textContent=text;a.style.color=ok?"#1f7a3a":""}
   if(b)b.textContent=ok?"ابری":"آفلاین";
 }
-function applyCloudData(cloud){state.deletedProductIds=Array.isArray(cloud.deletedProductIds)?cloud.deletedProductIds.map(String):[];state.products=(cloud.products||[]).filter(p=>!state.deletedProductIds.includes(String(p.id)));state.customers=cloud.customers||[];state.deletedInvoiceIds=Array.isArray(cloud.deletedInvoiceIds)?cloud.deletedInvoiceIds.map(String):[];state.invoices=(cloud.invoices||[]).filter(i=>!state.deletedInvoiceIds.includes(String(i.id)));state.settings={...DEFAULT_SETTINGS,...(cloud.settings||{})};}
-function getLocalData(){return {app:"Pahlavan Store",version:4,syncEngine:"drive-cache-safe",updatedAt:new Date().toISOString(),products:state.products,customers:state.customers,invoices:state.invoices,deletedInvoiceIds:state.deletedInvoiceIds,deletedProductIds:state.deletedProductIds,settings:state.settings}}
+function applyCloudData(cloud){state.deletedProductIds=Array.isArray(cloud.deletedProductIds)?cloud.deletedProductIds.map(String):[];state.productTombstones=Array.isArray(cloud.productTombstones)?cloud.productTombstones:[];state.deletedProductIds=Array.from(new Set([...state.deletedProductIds,...state.productTombstones.map(t=>String(t.id))]));state.products=(cloud.products||[]).filter(p=>!state.deletedProductIds.includes(String(p.id)));state.customers=cloud.customers||[];state.deletedInvoiceIds=Array.isArray(cloud.deletedInvoiceIds)?cloud.deletedInvoiceIds.map(String):[];state.invoices=(cloud.invoices||[]).filter(i=>!state.deletedInvoiceIds.includes(String(i.id)));state.settings={...DEFAULT_SETTINGS,...(cloud.settings||{})};}
+function getLocalData(){return {app:"Pahlavan Store",version:5,syncEngine:"drive-cache-safe",updatedAt:new Date().toISOString(),products:state.products,customers:state.customers,invoices:state.invoices,deletedInvoiceIds:state.deletedInvoiceIds,deletedProductIds:state.deletedProductIds,productTombstones:state.productTombstones,settings:state.settings}}
 function driveHeaders(){return {Authorization:"Bearer "+state.token}}
 function noCacheUrl(url){
   const sep=url.includes("?")?"&":"?";
@@ -401,7 +401,7 @@ async function readCloud(){
   // Always bypass browser/proxy cache so the second device receives the newest Drive revision.
   const r=await driveFetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(state.driveFileId)+"?alt=media");
   const d=await r.json();
-  if(!d||d.app!=="Pahlavan Store"||(d.version!==1&&d.version!==2&&d.version!==3)||!Array.isArray(d.products)||!Array.isArray(d.customers)||!Array.isArray(d.invoices))throw new Error("فایل ابری معتبر نیست");
+  if(!d||d.app!=="Pahlavan Store"||(d.version!==1&&d.version!==2&&d.version!==3&&d.version!==4&&d.version!==5)||!Array.isArray(d.products)||!Array.isArray(d.customers)||!Array.isArray(d.invoices))throw new Error("فایل ابری معتبر نیست");
   return d;
 }
 async function getCloudMeta(){
@@ -437,7 +437,12 @@ async function syncNow(silent=false){
     const mergedDeleted=Array.from(new Set([...cloudDeleted,...localDeleted]));
     const cloudDeletedProducts=(cloud.deletedProductIds||[]).map(String);
     const localDeletedProducts=(state.deletedProductIds||[]).map(String);
-    const mergedDeletedProducts=Array.from(new Set([...cloudDeletedProducts,...localDeletedProducts]));
+    const cloudTombstones=Array.isArray(cloud.productTombstones)?cloud.productTombstones:[];
+    const localTombstones=Array.isArray(state.productTombstones)?state.productTombstones:[];
+    const tombstoneMap=new Map();
+    [...cloudTombstones,...localTombstones].forEach(t=>{if(t&&t.id!=null)tombstoneMap.set(String(t.id),t)});
+    const mergedDeletedProducts=Array.from(new Set([...cloudDeletedProducts,...localDeletedProducts,...tombstoneMap.keys()]));
+    const mergedProductTombstones=Array.from(tombstoneMap.values());
     const mergeById=(localArr,cloudArr,deletedIds=[])=>{
       const deleted=new Set(deletedIds.map(String));
       const map=new Map();
@@ -471,6 +476,7 @@ async function syncNow(silent=false){
     state.products=mergedProducts;
     state.customers=mergedCustomers;
     state.deletedProductIds=mergedDeletedProducts;
+    state.productTombstones=mergedProductTombstones;
     state.deletedInvoiceIds=mergedDeleted;
     state.invoices=mergedInvoices;
     state.settings=mergedSettings;
@@ -483,6 +489,8 @@ async function syncNow(silent=false){
     const verify=await readCloud();
     if(!Array.isArray(verify.products)||!Array.isArray(verify.customers)||!Array.isArray(verify.invoices))throw new Error("VERIFY_FAILED");
     state.deletedProductIds=Array.isArray(verify.deletedProductIds)?verify.deletedProductIds.map(String):mergedDeletedProducts;
+    state.productTombstones=Array.isArray(verify.productTombstones)?verify.productTombstones:mergedProductTombstones;
+    state.deletedProductIds=Array.from(new Set([...state.deletedProductIds,...state.productTombstones.map(t=>String(t.id))]));
     state.products=(verify.products||[]).filter(p=>!state.deletedProductIds.includes(String(p.id)));
     state.customers=verify.customers;
     state.deletedInvoiceIds=Array.isArray(verify.deletedInvoiceIds)?verify.deletedInvoiceIds.map(String):mergedDeleted;
