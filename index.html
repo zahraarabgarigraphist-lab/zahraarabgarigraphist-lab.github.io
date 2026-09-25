@@ -94,7 +94,7 @@ table{width:100%;border-collapse:collapse;min-width:650px}th,td{padding:13px;bor
 <section id="reports" class="page"><div class="page-head"><h1>گزارش‌های فروش</h1><button class="gold-btn" onclick="openPage('profit')">💰 صفحه سود</button></div><div class="panel"><div class="form-grid"><label>ماه گزارش<input id="reportMonth" type="month" onchange="renderReports()"></label></div><div id="reportBox"></div></div></section>
 <section id="profit" class="page"><div class="page-head"><h1>سود خالص</h1><button class="secondary-btn" onclick="openPage('reports')">← گزارش فروش</button></div><div class="panel"><div class="form-grid"><label>ماه محاسبه<input id="profitMonth" type="month" onchange="renderProfit()"></label></div><div id="profitBox"></div></div></section>
 <section id="settings" class="page"><div class="page-head"><h1>تنظیمات و همگام‌سازی</h1></div><div class="panel"><h2>💰 تنظیمات سود ماهانه</h2><p class="muted">این اعداد برای محاسبه سود خالص، ذخیره خرید مجدد و سهم دو شریک استفاده می‌شوند.</p><div class="form-grid"><label>درصد تورم/افزایش هزینه خرید<input id="inflationRate" type="number" min="0" step="0.1" placeholder="مثلاً 30"></label><label>کرایه / اجاره ماهانه<input id="expenseRent" type="number" min="0" placeholder="0"></label><label>آب و برق و گاز<input id="expenseUtilities" type="number" min="0" placeholder="0"></label><label>هزینه‌های جاری دیگر<input id="expenseOther" type="number" min="0" placeholder="0"></label></div><button class="gold-btn" onclick="saveFinancialSettings()">ذخیره تنظیمات مالی</button><div class="note" style="margin-top:12px">سهم مهدی: <b>۵۰٪</b> &nbsp; | &nbsp; سهم زهرا: <b>۵۰٪</b></div></div><div class="panel"><h2>🎨 شخصی‌سازی برنامه</h2><p class="muted">از این قسمت می‌توانی بدون تغییر کد، رنگ، ظاهر و منوهای برنامه را خودت تنظیم کنی.</p><div class="form-grid"><label>تم آماده<select id="themePreset" onchange="previewThemePreset()"><option value="gold">طلایی / کرم</option><option value="blue">آبی</option><option value="green">سبز</option><option value="rose">رز</option><option value="dark">تیره</option></select></label><label>رنگ اصلی<input id="accentColor" type="color" value="#d0a849" onchange="previewCustomTheme()"></label><label>رنگ پس‌زمینه<input id="bgColor" type="color" value="#f3efe7" onchange="previewCustomTheme()"></label><label>نام فروشگاه در برنامه<input id="storeDisplayName" type="text" placeholder="فروشگاه یراق آلات کابینت پهلوان"></label></div><div style="margin-top:12px"><button class="gold-btn" onclick="saveUISettings()">ذخیره ظاهر برنامه</button><button class="secondary-btn" onclick="resetUISettings()">بازگردانی ظاهر پیش‌فرض</button></div><hr><h3>🧭 مدیریت منوها</h3><p class="muted">می‌توانی منوهای اصلی را روشن/خاموش و نام نمایشی‌شان را تغییر بدهی.</p><div id="menuSettings" class="setting-list"></div><div class="note">منوی سفارشی می‌تواند به یک صفحه یا لینک دلخواه وصل شود؛ برای مثال لینک کاتالوگ، سایت تأمین‌کننده یا فایل قیمت.</div><h3>➕ افزودن منوی سفارشی</h3><div class="custom-menu-add"><input id="customMenuIcon" maxlength="3" placeholder="📋"><input id="customMenuName" maxlength="30" placeholder="نام منو"><input id="customMenuUrl" placeholder="https://..."><button class="gold-btn" onclick="addCustomMenu()">افزودن</button></div><div id="customMenuList" class="setting-list" style="margin-top:12px"></div></div><div class="panel"><h2>☁️ فضای ابری مشترک</h2><p>اطلاعات فروشگاه در یک فایل مشترک Google Drive نگهداری می‌شود تا بتوانی از گوشی و کامپیوتر به آن دسترسی داشته باشی.</p><div class="cloud-box"><div><span>وضعیت اتصال:</span><b id="cloudState">متصل نیست</b></div><button class="gold-btn" onclick="connectDrive()">اتصال Google Drive</button><button class="secondary-btn" onclick="pickSharedFile()">انتخاب فایل مشترک</button><button class="secondary-btn" onclick="syncNow()">همگام‌سازی الآن</button><button class="secondary-btn" onclick="disconnectDrive()">قطع اتصال</button></div>
-<div class="note" style="margin-top:12px"><b>فایل مشترک فروشگاه:</b><span id="cloudFileName"> هنوز انتخاب نشده</span><br><small>هر دو گوشی باید همین فایل را از Google Drive انتخاب کنند؛ در این حالت حساب Google هر گوشی می‌تواند جدا باشد.</small></div><div class="note"><b>پشتیبان‌گیری اطلاعات:</b> قبل از حذف مرورگر یا تعویض گوشی، از اطلاعات پشتیبان بگیر.</div>
+<div class="note" style="margin-top:12px"><b>فایل مشترک فروشگاه:</b><span id="cloudFileName"> هنوز انتخاب نشده</span><br><small>هر دو گوشی باید دقیقاً همین فایل را انتخاب کنند. برای اطمینان، شناسه فایل را هم می‌توانی بین دو گوشی مقایسه کنی.</small><br><b>شناسه فایل:</b> <span id="cloudFileIdLabel">—</span> <button class="secondary-btn" onclick="copyCloudFileId()">کپی شناسه</button></div><div class="note"><b>پشتیبان‌گیری اطلاعات:</b> قبل از حذف مرورگر یا تعویض گوشی، از اطلاعات پشتیبان بگیر.</div>
 <div class="cloud-box" style="margin-top:12px">
   <button class="gold-btn" onclick="exportBackup()">📥 دریافت فایل پشتیبان</button>
   <label class="secondary-btn" style="cursor:pointer;text-align:center">
@@ -306,6 +306,12 @@ async function connectDrive(){
 function updateCloudFileLabel(name){
   const el=document.getElementById("cloudFileName");
   if(el)el.textContent=name?" "+name:" هنوز انتخاب نشده";
+  const idEl=document.getElementById("cloudFileIdLabel");
+  if(idEl)idEl.textContent=state.driveFileId?String(state.driveFileId):"—";
+}
+function copyCloudFileId(){
+  if(!state.driveFileId){alert("هنوز فایل مشترک انتخاب نشده است.");return;}
+  navigator.clipboard?.writeText(String(state.driveFileId)).then(()=>alert("شناسه فایل کپی شد.")).catch(()=>prompt("شناسه فایل:",String(state.driveFileId)));
 }
 async function applySelectedCloudFile(fileId,fileName){
   if(!fileId)throw new Error("فایل انتخاب نشد");
@@ -398,55 +404,73 @@ async function syncNow(silent=false){
     return;
   }
   try{
-    const meta=await getCloudMeta();
-    // اگر این دستگاه تغییر محلی ندارد، همیشه آخرین نسخه ابری را دریافت کن.
+    // همیشه اول آخرین نسخه فایل مشترک را از Drive می‌خوانیم.
+    // این کار وابستگی همگام‌سازی به modifiedTime/کش مرورگر را حذف می‌کند.
+    const cloud=await readCloud();
+    const mergeById=(localArr,cloudArr)=>{
+      const map=new Map();
+      (cloudArr||[]).forEach(x=>map.set(String(x.id),x));
+      (localArr||[]).forEach(x=>{
+        const k=String(x.id);
+        // برای آیتم‌های جدید یا تغییرکرده روی این دستگاه، نسخه محلی را نگه می‌داریم.
+        if(!map.has(k) || state.localDirty) map.set(k,x);
+      });
+      return Array.from(map.values());
+    };
+
     if(!state.localDirty){
-      const cloud=await readCloud();
-      state.products=cloud.products;state.customers=cloud.customers;state.invoices=cloud.invoices;state.settings={...DEFAULT_SETTINGS,...(cloud.settings||{})};
-      state.lastRemoteModified=meta.modifiedTime;state.connected=true;state.localDirty=false;
-      setCloudStatus("همگام شد",true);save(false);
-      if(!silent)alert("اطلاعات جدید از Google Drive دریافت شد.");
+      state.products=cloud.products||[];
+      state.customers=cloud.customers||[];
+      state.invoices=cloud.invoices||[];
+      state.settings={...DEFAULT_SETTINGS,...(cloud.settings||{})};
+      const meta=await getCloudMeta();
+      state.lastRemoteModified=meta.modifiedTime;
+      state.connected=true;
+      save(false);
+      setCloudStatus("همگام شد",true);
+      if(!silent)alert("آخرین اطلاعات فایل مشترک دریافت شد.");
       return;
     }
-    // اگر این دستگاه تغییر کرده، فقط در صورتی ارسال کن که فایل ابری از آخرین نسخه‌ای که دیده‌ای تغییر نکرده باشد.
-    if(state.lastRemoteModified && meta.modifiedTime!==state.lastRemoteModified){
-      const cloud=await readCloud();
-      // به‌جای اینکه در تعارض، یکی از دو دستگاه کل اطلاعات دیگری را پاک کند،
-      // داده‌ها را ادغام می‌کنیم. آیتم‌های جدید هر دو دستگاه حفظ می‌شوند.
-      const mergeById=(localArr,cloudArr)=>{
-        const map=new Map();
-        (cloudArr||[]).forEach(x=>map.set(String(x.id),x));
-        (localArr||[]).forEach(x=>{
-          const k=String(x.id);
-          if(!map.has(k)) map.set(k,x);
-        });
-        return Array.from(map.values());
-      };
-      state.products=mergeById(state.products,cloud.products);
-      state.customers=mergeById(state.customers,cloud.customers);
-      state.invoices=mergeById(state.invoices,cloud.invoices);
-      state.settings={...DEFAULT_SETTINGS,...(cloud.settings||{}),...(state.settings||{})};
-      // نسخه ادغام‌شده را به فایل مشترک می‌فرستیم؛ بنابراین کالای تازه‌ای که
-      // روی هر کدام از دو گوشی ساخته شده باشد، در گوشی دیگر هم باقی می‌ماند.
-      const up=await uploadCloud(meta.modifiedTime);
-      const verify=await readCloud();
-      if(!verify||!Array.isArray(verify.products))throw new Error("VERIFY_FAILED");
-      state.products=verify.products;
-      state.customers=verify.customers;
-      state.invoices=verify.invoices;
-      state.settings={...DEFAULT_SETTINGS,...(verify.settings||{})};
-      state.lastRemoteModified=up.modifiedTime;state.connected=true;state.localDirty=false;
-      save(false);setCloudStatus("همگام شد",true);
-      if(!silent)alert("تغییرات دو دستگاه با هم ادغام و در Google Drive ذخیره شد.");
-      return;
-    }
-    const up=await uploadCloud(state.lastRemoteModified);
-    state.lastRemoteModified=up.modifiedTime;state.connected=true;state.localDirty=false;setCloudStatus("همگام شد",true);save(false);
-    if(!silent)alert("تغییرات این دستگاه با Google Drive همگام شد.");
+
+    // تغییرات محلی و ابری را با هم ترکیب می‌کنیم.
+    // برای کالای/مشتری/فاکتور جدید، هیچ‌کدام حذف نمی‌شود.
+    const mergedProducts=mergeById(state.products,cloud.products);
+    const mergedCustomers=mergeById(state.customers,cloud.customers);
+    const mergedInvoices=mergeById(state.invoices,cloud.invoices);
+    const mergedSettings={...DEFAULT_SETTINGS,...(cloud.settings||{}),...(state.settings||{})};
+
+    state.products=mergedProducts;
+    state.customers=mergedCustomers;
+    state.invoices=mergedInvoices;
+    state.settings=mergedSettings;
+
+    // آخرین متادیتا را دوباره می‌گیریم و همان نسخه را مبنای آپلود قرار می‌دهیم.
+    const meta=await getCloudMeta();
+    const up=await uploadCloud(meta.modifiedTime);
+
+    // تأیید واقعی: فایل را دوباره از Drive می‌خوانیم و بررسی می‌کنیم.
+    const verify=await readCloud();
+    if(!Array.isArray(verify.products)||!Array.isArray(verify.customers)||!Array.isArray(verify.invoices))throw new Error("VERIFY_FAILED");
+    state.products=verify.products;
+    state.customers=verify.customers;
+    state.invoices=verify.invoices;
+    state.settings={...DEFAULT_SETTINGS,...(verify.settings||{})};
+    const fresh=await getCloudMeta();
+    state.lastRemoteModified=fresh.modifiedTime||up.modifiedTime;
+    state.connected=true;
+    state.localDirty=false;
+    save(false);
+    setCloudStatus("همگام شد",true);
+    if(!silent)alert("تغییرات این دستگاه با اطلاعات فایل مشترک ادغام و ذخیره شد.");
   }catch(e){
     console.error(e);
-    if(e.message==="CONFLICT") alert("فایل Google Drive هم‌زمان تغییر کرده است. دوباره «همگام‌سازی الآن» را بزن.");
-    else if(!silent)alert("همگام‌سازی انجام نشد.\n"+e.message);
+    if(e.message==="AUTH_EXPIRED"){
+      if(!silent)alert("ورود Google منقضی شده است. دوباره «اتصال Google Drive» را بزن.");
+    }else if(e.message==="CONFLICT"){
+      if(!silent)alert("فایل هم‌زمان تغییر کرده است. دوباره «همگام‌سازی الآن» را بزن.");
+    }else if(!silent){
+      alert("همگام‌سازی انجام نشد.\n"+e.message);
+    }
   }
 }
 function disconnectDrive(){
